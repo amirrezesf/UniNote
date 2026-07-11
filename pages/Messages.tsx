@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { MOCK_INSTRUCTORS, CURRENT_USER, LEADERBOARD_DATA } from '../constants';
+import { MOCK_USERS, CURRENT_USER, LEADERBOARD_DATA } from '../constants';
+const INSTRUCTOR_USERS = MOCK_USERS.filter(u => u.role === 'INSTRUCTOR');
 import { Search, Send, MoreVertical, Phone, Video, ArrowRight, MessageCircle, Plus, X, Edit, Ban } from 'lucide-react';
 
 const MessagesPage = () => {
     // Mock Conversations
     const [conversations, setConversations] = useState([
-        { id: 1, user: MOCK_INSTRUCTORS[0], lastMessage: 'سلام، جزوه جلسه قبل را بارگذاری کردم.', time: '۱۰:۳۰', unread: 2 },
-        { id: 2, user: MOCK_INSTRUCTORS[1], lastMessage: 'ممنون استاد.', time: 'دیروز', unread: 0 },
-        { id: 3, user: MOCK_INSTRUCTORS[2], lastMessage: 'لطفا تمرین‌ها را تا فردا ارسال کنید.', time: 'دوشنبه', unread: 0 },
+        { id: 1, user: INSTRUCTOR_USERS[0], lastMessage: 'سلام، جزوه جلسه قبل را بارگذاری کردم.', time: '۱۰:۳۰', unread: 2 },
+        { id: 2, user: INSTRUCTOR_USERS[0], lastMessage: 'ممنون استاد.', time: 'دیروز', unread: 0 },
+        { id: 3, user: INSTRUCTOR_USERS[0], lastMessage: 'لطفا تمرین‌ها را تا فردا ارسال کنید.', time: 'دوشنبه', unread: 0 },
     ]);
 
     const [activeChat, setActiveChat] = useState<number | null>(null);
@@ -36,7 +37,7 @@ const MessagesPage = () => {
 
     // Combine mock users for "Contacts" list (excluding current user)
     const allContacts = Array.from(new Map(
-        [...MOCK_INSTRUCTORS, ...LEADERBOARD_DATA.map(l => l.user)]
+        [...INSTRUCTOR_USERS, ...LEADERBOARD_DATA.map(l => l.user)]
         .filter(u => u.id !== CURRENT_USER.id)
         .map(u => [u.id, u])
     ).values());

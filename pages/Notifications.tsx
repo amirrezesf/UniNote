@@ -18,11 +18,11 @@ interface Notification {
 
 const NotificationsPage = () => {
     const [notifications, setNotifications] = useState<Notification[]>([
-        { id: 1, type: 'LIKE', title: 'لایک جدید', description: 'علی محمدی جزوه "ریاضی عمومی ۱" شما را پسندید.', time: '۵ دقیقه پیش', read: false, link: '/note/n1' },
-        { id: 2, type: 'COMMENT', title: 'نظر جدید', description: 'سارا احمدی روی جزوه "فیزیک ۲" نظری ارسال کرد.', time: '۱ ساعت پیش', read: false, link: '/note/n3' },
-        { id: 3, type: 'COURSE', title: 'جزوه جدید در درس', description: 'دکتر کمالی جزوه جدیدی در درس "هوش مصنوعی" بارگذاری کرد.', time: '۲ ساعت پیش', read: true, link: '/note/n2' },
+        { id: 1, type: 'LIKE', title: 'لایک جدید', description: 'علی محمدی جزوه "ریاضی عمومی ۱" شما را پسندید.', time: '۵ دقیقه پیش', read: false, link: '/material/m6' },
+        { id: 2, type: 'COMMENT', title: 'نظر جدید', description: 'سارا احمدی روی جزوه "فیزیک ۲" نظری ارسال کرد.', time: '۱ ساعت پیش', read: false, link: '/material/m9' },
+        { id: 3, type: 'COURSE', title: 'جزوه جدید در درس', description: 'دکتر کمالی جزوه جدیدی در درس "هوش مصنوعی" بارگذاری کرد.', time: '۲ ساعت پیش', read: true, link: '/material/m4' },
         { id: 4, type: 'SYSTEM', title: 'به‌روزرسانی سیستم', description: 'نسخه جدید یونی‌نوت با قابلیت‌های هوش مصنوعی منتشر شد!', time: '۱ روز پیش', read: true },
-        { id: 5, type: 'LIKE', title: 'لایک جدید', description: 'رضا حسینی جزوه "ساختمان داده" شما را پسندید.', time: '۲ روز پیش', read: true, link: '/note/n4' },
+        { id: 5, type: 'LIKE', title: 'لایک جدید', description: 'رضا حسینی جزوه "ساختمان داده" شما را پسندید.', time: '۲ روز پیش', read: true, link: '/material/m1' },
     ]);
 
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');

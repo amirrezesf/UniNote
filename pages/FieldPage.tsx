@@ -1,0 +1,120 @@
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  getFieldById,
+  getTeachersByField,
+  getCoursesByField,
+  getMaterialsByField,
+  UNIVERSITIES,
+} from '../constants';
+import { GraduationCap, BookOpen, FileText, Layers, Building2 } from 'lucide-react';
+import EntityBreadcrumb from '../components/EntityBreadcrumb';
+import StatPill from '../components/StatPill';
+import TeacherCard from '../components/TeacherCard';
+import CourseCard from '../components/CourseCard';
+import EmptyState from '../components/EmptyState';
+
+const FieldPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const field = getFieldById(id);
+  const [uniFilter, setUniFilter] = useState<string>('');
+
+  if (!field) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold text-slate-800">رشته مورد نظر یافت نشد</h2>
+        <Link to="/browse" className="text-blue-600 hover:underline mt-4 inline-block">بازگشت به کاوش</Link>
+      </div>
+    );
+  }
+
+  const allTeachers = getTeachersByField(field.id);
+  const allCourses = getCoursesByField(field.id);
+  const materials = getMaterialsByField(field.id);
+
+  const teachers = uniFilter ? allTeachers.filter(t => t.universityId === uniFilter) : allTeachers;
+  const courses = uniFilter ? allCourses.filter(c => c.universityId === uniFilter) : allCourses;
+
+  // Universities that actually have content in this field
+  const relevantUniIds = new Set<string>();
+  allTeachers.forEach(t => t.universityId && relevantUniIds.add(t.universityId));
+  allCourses.forEach(c => c.universityId && relevantUniIds.add(c.universityId));
+  const relevantUnis = UNIVERSITIES.filter(u => relevantUniIds.has(u.id));
+
+  return (
+    <div className="space-y-8">
+      <EntityBreadcrumb items={[{ label: field.name }]} />
+
+      {/* Header */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 flex items-center gap-5">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+          <Layers size={30} />
+        </div>
+        <div>
+          <span className="text-sm text-slate-400">رشته تحصیلی</span>
+          <h1 className="text-2xl font-bold text-slate-900">{field.name}</h1>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <StatPill icon={GraduationCap} value={allTeachers.length} label="استاد" color="bg-blue-100 text-blue-600" />
+        <StatPill icon={BookOpen} value={allCourses.length} label="درس" color="bg-emerald-100 text-emerald-600" />
+        <StatPill icon={FileText} value={materials.length} label="منبع" color="bg-amber-100 text-amber-600" />
+      </div>
+
+      {/* University filter */}
+      {relevantUnis.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setUniFilter('')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors border ${uniFilter === '' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+          >
+            همه دانشگاه‌ها
+          </button>
+          {relevantUnis.map(u => (
+            <button
+              key={u.id}
+              onClick={() => setUniFilter(u.id)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors border flex items-center gap-1 ${uniFilter === u.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+            >
+              <Building2 size={14} /> {u.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Teachers */}
+      <section>
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <GraduationCap className="text-blue-600" size={22} />
+          اساتید این رشته
+        </h2>
+        {teachers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {teachers.map(t => <TeacherCard key={t.id} teacher={t} />)}
+          </div>
+        ) : (
+          <EmptyState icon={GraduationCap} title="استادی یافت نشد" />
+        )}
+      </section>
+
+      {/* Courses */}
+      <section>
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <BookOpen className="text-blue-600" size={22} />
+          درس‌های این رشته
+        </h2>
+        {courses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map(c => <CourseCard key={c.id} course={c} />)}
+          </div>
+        ) : (
+          <EmptyState icon={BookOpen} title="درسی یافت نشد" />
+        )}
+      </section>
+    </div>
+  );
+};
+
+export default FieldPage;

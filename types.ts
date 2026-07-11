@@ -1,9 +1,6 @@
-
 export enum UserRole {
   STUDENT = 'STUDENT',
   INSTRUCTOR = 'INSTRUCTOR',
-  ADMIN = 'ADMIN',
-  CLASS_REP = 'CLASS_REP'
 }
 
 export interface User {
@@ -19,34 +16,72 @@ export interface User {
 export enum NoteStatus {
   PENDING = 'PENDING',
   PUBLISHED = 'PUBLISHED',
-  REJECTED = 'REJECTED'
+  REJECTED = 'REJECTED',
 }
 
-export interface Note {
+export interface University {
+  id: string;
+  name: string;
+  city?: string;
+  logoUrl?: string;
+}
+
+export interface Field {
+  id: string;
+  name: string;
+}
+
+export interface Teacher {
+  id: string;
+  name: string;
+  universityId?: string;
+  fieldIds: string[];
+  avatarUrl?: string;
+  isVerified?: boolean;
+  bio?: string;
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  code?: string;
+  fieldId: string;
+  teacherId?: string;
+  universityId?: string;
+  description?: string;
+}
+
+export type MaterialType = 'HANDOUT' | 'EXAM' | 'NOTE' | 'SLIDE' | 'ASSIGNMENT';
+
+export interface Material {
   id: string;
   title: string;
   description: string;
-  author: User;
-  course: string;
-  fieldOfStudy: string;
-  university?: string;
-  teacher?: string;
-  term: string;
+  materialType: MaterialType;
+  uploader: User;
+  fieldId: string;
+  courseId?: string;
+  teacherId?: string;
+  universityId?: string;
+  term?: string;
   fileType: 'pdf' | 'docx' | 'pptx' | 'img';
   fileUrl: string;
   thumbnailUrl: string;
   status: NoteStatus;
   likes: number;
   views: number;
-  rating: number; // 1-5
+  rating: number;
   createdAt: string;
   tags: string[];
-  visibility: 'PUBLIC' | 'CLASS';
+  visibility: 'PUBLIC';
 }
+
+/** Backwards-compatible alias — new code should use `Material`. */
+export type Note = Material;
 
 export interface Comment {
   id: string;
-  noteId: string;
+  materialId: string;
   user: User;
   content: string;
   createdAt: string;
