@@ -1,40 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MATERIALS, FIELDS, UNIVERSITIES, TEACHERS, MATERIAL_TYPE_LABELS } from '../constants';
-import { Search as SearchIcon, Filter, X, SlidersHorizontal, Layers, Building2, GraduationCap, Tag } from 'lucide-react';
+import {  useUniversities, useFields, useTeachers } from '../src/api/hooks/directory';
+import { Search as SearchIcon, Filter, X, SlidersHorizontal, Layers, Building2, GraduationCap, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NoteStatus, MaterialType } from '../types';
 import { MaterialRow } from '../components/MaterialCard';
 import EmptyState from '../components/EmptyState';
+import { useMaterials } from '@/src/api/hooks/materials';
 
 const MATERIAL_TYPES: MaterialType[] = ['HANDOUT', 'EXAM', 'NOTE', 'SLIDE', 'ASSIGNMENT'];
 
 const SearchPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [fieldId, setFieldId] = useState(searchParams.get('field') || '');
-  const [universityId, setUniversityId] = useState('');
+  const [universityId, setUniversityId] = useState(searchParams.get('university') || '');
   const [teacherId, setTeacherId] = useState(searchParams.get('teacher') || '');
   const [materialType, setMaterialType] = useState<MaterialType | ''>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
 
   // Per-section option search
   const [fieldQuery, setFieldQuery] = useState('');
   const [uniQuery, setUniQuery] = useState('');
   const [teacherQuery, setTeacherQuery] = useState('');
 
-  const visibleFields = FIELDS.filter(f => f.name.includes(fieldQuery));
-  const visibleUnis = UNIVERSITIES.filter(u => u.name.includes(uniQuery));
-  const visibleTeachers = TEACHERS.filter(t => t.name.includes(teacherQuery));
-
-  const results = MATERIALS.filter(m => {
-    if (m.status !== NoteStatus.PUBLISHED) return false;
-    const matchesQuery = !query || m.title.includes(query) || m.description.includes(query) || m.tags.some(t => t.includes(query));
-    const matchesField = !fieldId || m.fieldId === fieldId;
-    const matchesUni = !universityId || m.universityId === universityId;
-    const matchesTeacher = !teacherId || m.teacherId === teacherId;
-    const matchesType = !materialType || m.materialType === materialType;
-    return matchesQuery && matchesField && matchesUni && matchesTeacher && matchesType;
+  // Fetch data with filters
+  const { data: materialsData, isLoading: materialsLoading, error: materialsError } = useMaterials({
+    q: query || undefined,
+    field: fieldId || undefined,
+    university: universityId || undefined,
+    teacher: teacherId || undefined,
+    type: materialType || undefined,
+    status: NoteStatus.PUBLISHED,
+    page,
+    ordering: '-createdAt',
   });
+
+  // Fetch options for filter dropdowns
+  const { data: universities = [], isLoading: unisLoading } = useUniversities();
+  const { data: fields = [], isLoading: fieldsLoading } = useFields();
+  const { data: teachers = [], isLoading: teachersLoading } = useTeachers();
+
+  // Filter dropdown options based on search query
+  const visibleFields = fields.filter(f => f.name.toLowerCase().includes(fieldQuery.toLowerCase()));
+  const visibleUnis = universities.filter(u => u.name.toLowerCase().includes(uniQuery.toLowerCase()));
+  const visibleTeachers = teachers.filter(t => t.name.toLowerCase().includes(teacherQuery.toLowerCase()));
+
+  const materialTypeLabels: Record<MaterialType, string> = {
+    HANDOUT: 'جزوه',
+    EXAM: 'نمونه سوال',
+    NOTE: 'یادداشت',
+    SLIDE: 'اسلاید',
+    ASSIGNMENT: 'تکلیف',
+  };
+
+  const results = materialsData?.results || [];
+  const totalCount = materialsData?.count || 0;
+  const totalPages = Math.ceil(totalCount / 20); // assuming page size 20
+  const hasNextPage = materialsData?.next !== null;
+  const hasPrevPage = materialsData?.previous !== null;
 
   const activeFilters = [fieldId, universityId, teacherId, materialType].filter(Boolean).length;
 
@@ -43,6 +67,23 @@ const SearchPage = () => {
     setUniversityId('');
     setTeacherId('');
     setMaterialType('');
+    setPage(1);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setSearchParams({ q: query.trim() || undefined });
+  };
+
+  const updateParam = (key: string, value: string | undefined) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    });
+    setPage(1);
   };
 
   const radio = (name: string, checked: boolean, onChange: () => void, label: string) => (
@@ -75,8 +116,8 @@ const SearchPage = () => {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Tag size={18} /> نوع منبع</h3>
             <div className="space-y-2">
-              {radio('mtype', materialType === '', () => setMaterialType(''), 'همه')}
-              {MATERIAL_TYPES.map(t => radio('mtype', materialType === t, () => setMaterialType(t), MATERIAL_TYPE_LABELS[t]))}
+              {radio('mtype', materialType === '', () => { setMaterialType(''); updateParam('type', undefined); }, 'همه')}
+              {MATERIAL_TYPES.map(t => radio('mtype', materialType === t, () => { setMaterialType(t); updateParam('type', t); }, materialTypeLabels[t]))}
             </div>
           </div>
 
@@ -88,8 +129,8 @@ const SearchPage = () => {
               <input type="text" value={fieldQuery} onChange={e => setFieldQuery(e.target.value)} placeholder="جستجوی رشته..." className="w-full pl-3 pr-9 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
-              {radio('field', fieldId === '', () => setFieldId(''), 'همه')}
-              {visibleFields.map(f => radio('field', fieldId === f.id, () => setFieldId(f.id), f.name))}
+              {radio('field', fieldId === '', () => { setFieldId(''); updateParam('field', undefined); }, 'همه')}
+              {visibleFields.map(f => radio('field', fieldId === f.id, () => { setFieldId(f.id); updateParam('field', f.id); }, f.name))}
             </div>
           </div>
 
@@ -101,8 +142,8 @@ const SearchPage = () => {
               <input type="text" value={uniQuery} onChange={e => setUniQuery(e.target.value)} placeholder="جستجوی دانشگاه..." className="w-full pl-3 pr-9 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
-              {radio('uni', universityId === '', () => setUniversityId(''), 'همه')}
-              {visibleUnis.map(u => radio('uni', universityId === u.id, () => setUniversityId(u.id), u.name))}
+              {radio('uni', universityId === '', () => { setUniversityId(''); updateParam('university', undefined); }, 'همه')}
+              {visibleUnis.map(u => radio('uni', universityId === u.id, () => { setUniversityId(u.id); updateParam('university', u.id); }, u.name))}
             </div>
           </div>
 
@@ -114,8 +155,8 @@ const SearchPage = () => {
               <input type="text" value={teacherQuery} onChange={e => setTeacherQuery(e.target.value)} placeholder="جستجوی استاد..." className="w-full pl-3 pr-9 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
-              {radio('teacher', teacherId === '', () => setTeacherId(''), 'همه')}
-              {visibleTeachers.map(t => radio('teacher', teacherId === t.id, () => setTeacherId(t.id), t.name))}
+              {radio('teacher', teacherId === '', () => { setTeacherId(''); updateParam('teacher', undefined); }, 'همه')}
+              {visibleTeachers.map(t => radio('teacher', teacherId === t.id, () => { setTeacherId(t.id); updateParam('teacher', t.id); }, t.name))}
             </div>
           </div>
         </div>
@@ -126,13 +167,15 @@ const SearchPage = () => {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 relative">
             <SearchIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="جستجو در نام منبع، توضیحات و برچسب‌ها..."
-              className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-            />
+            <form onSubmit={handleSearch}>
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="جستجو در نام منبع، توضیحات و برچسب‌ها..."
+                className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+              />
+            </form>
           </div>
           <button onClick={() => setShowFilters(true)} className="md:hidden bg-white border border-slate-200 p-3 rounded-xl text-slate-600 relative">
             <SlidersHorizontal size={20} />
@@ -141,16 +184,50 @@ const SearchPage = () => {
         </div>
 
         <div className="mb-4 text-sm text-slate-500 flex items-center gap-2">
-          <Filter size={15} /> {results.length} منبع یافت شد
+          <Filter size={15} /> {totalCount} منبع یافت شد
         </div>
 
         {/* Results */}
         <div className="flex-1 overflow-y-auto pb-10">
           <div className="space-y-4">
-            {results.length === 0 ? (
+            {materialsLoading ? (
+              [...Array(5)].map((_, i) => (
+                <MaterialRow key={`skeleton-${i}`} material={{
+                  id: '', title: '', description: '', materialType: 'HANDOUT',
+                  uploader: { id: '', name: '', role: 'STUDENT', avatarUrl: '', points: 0 },
+                  fieldId: '', courseId: '', teacherId: '', universityId: '',
+                  term: '', fileType: 'pdf', fileUrl: '', thumbnailUrl: '',
+                  status: 'PUBLISHED', likes: 0, views: 0, rating: 0, createdAt: '', tags: [], visibility: 'PUBLIC'
+                }} skeleton />
+              ))
+            ) : materialsError ? (
+              <EmptyState icon={SearchIcon} title="خطا در جستجو" description="لطفاً دوباره تلاش کنید." />
+            ) : results.length === 0 ? (
               <EmptyState icon={SearchIcon} title="نتیجه‌ای یافت نشد" description="عبارت جستجو یا فیلترها را تغییر دهید." />
             ) : (
-              results.map(m => <MaterialRow key={m.id} material={m} />)
+              <>
+                {results.map(m => <MaterialRow key={m.id} material={m} />)}
+                {/* Pagination */}
+                {(hasNextPage || hasPrevPage) && (
+                  <div className="flex justify-center gap-2 mt-8 pt-4 border-t border-slate-200">
+                    <button
+                      onClick={() => setPage(p => p - 1)}
+                      disabled={!hasPrevPage}
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    >
+                      <ChevronRight size={18} /> قبلی
+                    </button>
+                    <span className="flex items-center px-4 text-slate-600">صفحه {page} از {totalPages}</span>
+                    <button
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!hasNextPage}
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    >
+                      بعدی <ChevronLeft size={18} />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
-
 import React, { useState } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from './src/context/AuthContext';
+import { useTheme } from './src/context/ThemeContext';
 import {
   Home,
   Search,
@@ -12,8 +13,13 @@ import {
   Bell,
   Compass,
   FileText,
+  ShoppingCart,
+  DollarSign,
+  Package,
+  Bookmark,
+  Sun,
+  Moon,
 } from 'lucide-react';
-import { CURRENT_USER } from './constants';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -32,7 +38,14 @@ import MyMaterialsPage from './pages/MyMaterials';
 import MessagesPage from './pages/Messages';
 import NotificationsPage from './pages/Notifications';
 import LoginPage from './pages/Login';
+import RegisterPage from './pages/Register';
 import ForgotPasswordPage from './pages/ForgotPassword';
+import CartPage from './pages/Cart';
+import PurchasesPage from './pages/Purchases';
+import EarningsPage from './pages/Earnings';
+import CheckoutCallbackPage from './pages/CheckoutCallback';
+import LibraryPage from './pages/Library';
+import { useCart } from './src/api/hooks/cart';
 
 // Layout Components
 const SidebarItem = ({
@@ -55,7 +68,7 @@ const SidebarItem = ({
     onClick={onClick}
     title={!expanded ? label : ''}
     className={`flex items-center gap-x-3 p-3 rounded-xl transition-all duration-200 group relative
-      ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}
+      ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 hover:text-slate-900 dark:hover:text-white'}
       ${expanded ? 'justify-start px-4' : 'justify-center'}
     `}
   >
@@ -64,17 +77,57 @@ const SidebarItem = ({
       {label}
     </span>
     {!expanded && (
-      <div className="absolute right-full mr-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+      <div className="absolute right-full mr-2 px-2 py-1 bg-slate-800 dark:bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
         {label}
       </div>
     )}
   </Link>
 );
 
+const RequireAuth = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-gray-900">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: useLocation() }} />;
+  }
+
+  return <>{children}</>;
+};
+
+const RedirectIfAuth = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-gray-900">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const path = location.pathname;
+  const { data: cart } = useCart();
+  const cartCount = cart?.itemCount || 0;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
@@ -86,42 +139,46 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     path.startsWith('/teacher/') ||
     path.startsWith('/course/');
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 dark:bg-gray-900 text-slate-800 dark:text-gray-100 overflow-hidden">
       <div
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={closeSidebar}
       />
 
       <aside className={`
-        fixed lg:static inset-y-0 right-0 z-50 bg-white border-l border-slate-200
+        fixed lg:static inset-y-0 right-0 z-50 bg-white dark:bg-gray-800 border-l border-slate-200 dark:border-gray-700
         shadow-2xl lg:shadow-none transition-all duration-300 ease-in-out h-full flex flex-col flex-shrink-0
         ${sidebarOpen ? 'w-72 translate-x-0' : 'w-72 lg:w-20 translate-x-full lg:translate-x-0'}
       `}>
-        <div className={`border-b border-slate-100 flex items-center flex-shrink-0 transition-all duration-300 ${sidebarOpen ? 'p-6 justify-between' : 'p-4 justify-center'}`}>
+        <div className={`border-b border-slate-100 dark:border-gray-700/50 flex items-center flex-shrink-0 transition-all duration-300 ${sidebarOpen ? 'p-6 justify-between' : 'p-4 justify-center'}`}>
           <div className={`flex items-center gap-x-3 ${sidebarOpen ? '' : 'justify-center'}`}>
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white flex-shrink-0">
               <Award size={24} />
             </div>
             <div className={`transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 hidden'}`}>
-              <h1 className="text-xl font-bold text-slate-900 whitespace-nowrap">یونی‌نوت</h1>
-              <p className="text-xs text-slate-500 whitespace-nowrap">دایرکتوری جزوات دانشگاهی</p>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white whitespace-nowrap">یونی‌نوت</h1>
+              <p className="text-xs text-slate-500 dark:text-gray-400 whitespace-nowrap">دایرکتوری جزوات دانشگاهی</p>
             </div>
           </div>
-          <button onClick={closeSidebar} className={`text-slate-500 hover:text-red-500 transition-colors lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
+          <button onClick={closeSidebar} className={`text-slate-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
             <X size={24} />
           </button>
         </div>
 
         <div className={`flex-shrink-0 transition-all duration-300 ${sidebarOpen ? 'p-6 pb-2' : 'p-2 pb-2'}`}>
           <Link to="/profile" onClick={closeSidebar} className="block">
-            <div className={`flex items-center gap-x-3 rounded-2xl border border-slate-100 hover:bg-blue-50 hover:border-blue-100 transition-colors cursor-pointer group ${sidebarOpen ? 'p-3 bg-slate-50' : 'p-2 justify-center border-transparent bg-transparent'}`}>
-              <img src={CURRENT_USER.avatarUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover group-hover:scale-105 transition-transform" />
+            <div className={`flex items-center gap-x-3 rounded-2xl border border-slate-100 dark:border-gray-700/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-100 dark:hover:border-blue-800/50 transition-colors cursor-pointer group ${sidebarOpen ? 'p-3 bg-slate-50 dark:bg-gray-700/50' : 'p-2 justify-center border-transparent bg-transparent'}`}>
+              <img src={user?.avatarUrl || 'https://picsum.photos/seed/user/200'} alt="Avatar" className="w-10 h-10 rounded-full object-cover group-hover:scale-105 transition-transform" />
               <div className={`flex-1 min-w-0 transition-all duration-300 overflow-hidden ${sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 hidden'}`}>
-                <p className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-700">{CURRENT_USER.name}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-400">{user?.name || 'کاربر'}</p>
                 <div className="flex items-center gap-x-1 text-xs text-amber-500 font-medium">
                   <Award size={12} />
-                  <span>{CURRENT_USER.points} امتیاز</span>
+                  <span>{user?.points || 0} امتیاز</span>
                 </div>
               </div>
             </div>
@@ -133,32 +190,56 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <SidebarItem to="/browse" icon={Compass} label="کاوش" active={isBrowseActive} onClick={closeSidebar} expanded={sidebarOpen} />
           <SidebarItem to="/search" icon={Search} label="جستجو" active={path === '/search'} onClick={closeSidebar} expanded={sidebarOpen} />
           <SidebarItem to="/upload" icon={UploadCloud} label="بارگذاری" active={path === '/upload'} onClick={closeSidebar} expanded={sidebarOpen} />
+          <SidebarItem to="/library" icon={Bookmark} label="کتابخانه" active={path === '/library'} onClick={closeSidebar} expanded={sidebarOpen} />
           <SidebarItem to="/my-materials" icon={FileText} label="مشارکت‌های من" active={path === '/my-materials'} onClick={closeSidebar} expanded={sidebarOpen} />
+          <SidebarItem to="/purchases" icon={Package} label="خریدهای من" active={path === '/purchases'} onClick={closeSidebar} expanded={sidebarOpen} />
+          <SidebarItem to="/earnings" icon={DollarSign} label="درآمد من" active={path === '/earnings'} onClick={closeSidebar} expanded={sidebarOpen} />
           <SidebarItem to="/leaderboard" icon={Award} label="برترین‌ها" active={path === '/leaderboard'} onClick={closeSidebar} expanded={sidebarOpen} />
         </nav>
 
-        <div className={`border-t border-slate-100 flex-shrink-0 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
-          <Link to="/login" className={`flex w-full items-center gap-x-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors ${sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'}`}>
+        <div className={`border-t border-slate-100 dark:border-gray-700/50 flex-shrink-0 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+          <button onClick={handleLogout} className={`flex w-full items-center gap-x-3 rounded-xl text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ${sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'}`}>
             <LogOut size={20} />
             <span className={`font-medium text-sm whitespace-nowrap transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 hidden'}`}>
               خروج از حساب
             </span>
-          </Link>
+          </button>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 flex-shrink-0 sticky top-0">
+        <header className="h-16 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between px-4 z-30 flex-shrink-0 sticky top-0">
           <div className="flex items-center gap-3">
-            <button onClick={toggleSidebar} className="text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors">
+            <button onClick={toggleSidebar} className="text-slate-600 dark:text-gray-400 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <Menu size={24} />
             </button>
-            <span className="font-bold text-lg text-slate-800 lg:hidden">یونی‌نوت</span>
+            <span className="font-bold text-lg text-slate-800 dark:text-gray-100 lg:hidden">یونی‌نوت</span>
           </div>
-          <Link to="/notifications" className="text-slate-600 p-2 relative hover:bg-slate-100 rounded-lg transition-colors">
-            <Bell size={24} />
-            <span className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </Link>
+          <div className="flex items-center gap-1">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="text-slate-600 dark:text-gray-400 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={isDark ? 'حالت روشن' : 'حالت تاریک'}
+            >
+              {isDark ? <Sun size={22} /> : <Moon size={22} />}
+            </button>
+            <Link to="/search" className="text-slate-600 dark:text-gray-400 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="جستجو">
+              <Search size={22} />
+            </Link>
+            <Link to="/cart" className="text-slate-600 dark:text-gray-400 p-2 relative hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="سبد خرید">
+              <ShoppingCart size={22} />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cartCount > 9 ? '۹+' : cartCount.toLocaleString('fa-IR')}
+                </span>
+              )}
+            </Link>
+            <Link to="/notifications" className="text-slate-600 dark:text-gray-400 p-2 relative hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="اعلان‌ها">
+              <Bell size={22} />
+              <span className="absolute top-2 left-2 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800"></span>
+            </Link>
+          </div>
         </header>
 
         <div className="flex-1 overflow-auto p-4 lg:p-8">
@@ -171,14 +252,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export default function App() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Routes>
+      <Route path="/login" element={<RedirectIfAuth><LoginPage /></RedirectIfAuth>} />
+      <Route path="/register" element={<RedirectIfAuth><RegisterPage /></RedirectIfAuth>} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/checkout/callback" element={<CheckoutCallbackPage />} />
 
-        <Route path="/*" element={
+      <Route path="/*" element={
+        <RequireAuth>
           <Layout>
             <Routes>
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/purchases" element={<PurchasesPage />} />
+              <Route path="/earnings" element={<EarningsPage />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/university/:id" element={<UniversityPage />} />
@@ -197,8 +284,9 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
             </Routes>
           </Layout>
-        } />
-      </Routes>
-    </HashRouter>
+        </RequireAuth>
+      } />
+    </Routes>
+
   );
 }

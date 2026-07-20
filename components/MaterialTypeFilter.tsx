@@ -1,6 +1,13 @@
 import React from 'react';
 import { MaterialType } from '../types';
-import { MATERIAL_TYPE_LABELS } from '../constants';
+
+const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
+  HANDOUT: 'جزوه',
+  EXAM: 'نمونه سوال',
+  NOTE: 'یادداشت',
+  SLIDE: 'اسلاید',
+  ASSIGNMENT: 'تمرین',
+};
 
 const ALL_TYPES: MaterialType[] = ['HANDOUT', 'EXAM', 'NOTE', 'SLIDE', 'ASSIGNMENT'];
 

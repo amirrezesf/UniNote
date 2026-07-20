@@ -1,25 +1,34 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import {
-  getUniversityById,
-  getFieldsByUniversity,
-  getTeachersByUniversity,
-  getCoursesByUniversity,
-  getMaterialsByUniversity,
-} from '../constants';
+import { useUniversity, useUniversityFields, useUniversityTeachers, useUniversityCourses } from '../src/api/hooks/directory';
+import { useMaterialsList } from '../src/api/hooks/materials';
 import { Building2, Layers, GraduationCap, BookOpen, FileText } from 'lucide-react';
 import EntityBreadcrumb from '../components/EntityBreadcrumb';
 import StatPill from '../components/StatPill';
 import FieldCard from '../components/FieldCard';
 import TeacherCard from '../components/TeacherCard';
 import EmptyState from '../components/EmptyState';
+import { NoteStatus } from '../types';
 
 const UniversityPage = () => {
   const { id } = useParams<{ id: string }>();
-  const university = getUniversityById(id);
   const [tab, setTab] = useState<'FIELDS' | 'TEACHERS'>('FIELDS');
 
-  if (!university) {
+  const { data: university, isLoading: uniLoading, isError: uniError } = useUniversity(id || '');
+  const { data: fields, isLoading: fieldsLoading } = useUniversityFields(id || '');
+  const { data: teachers, isLoading: teachersLoading } = useUniversityTeachers(id || '');
+  const { data: courses } = useUniversityCourses(id || '');
+  const { data: materials } = useMaterialsList({ university: id, status: NoteStatus.PUBLISHED });
+
+  if (uniLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (uniError || !university) {
     return (
       <div className="text-center py-20">
         <h2 className="text-2xl font-bold text-slate-800">دانشگاه مورد نظر یافت نشد</h2>
@@ -28,13 +37,11 @@ const UniversityPage = () => {
     );
   }
 
-  const fields = getFieldsByUniversity(university.id);
-  const teachers = getTeachersByUniversity(university.id);
-  const courses = getCoursesByUniversity(university.id);
-  const materials = getMaterialsByUniversity(university.id);
-
   const tabBtn = (active: boolean) =>
     `px-5 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 ${active ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`;
+
+  const courseCount = courses?.length ?? 0;
+  const materialCount = materials?.filter(m => m.status === NoteStatus.PUBLISHED).length ?? 0;
 
   return (
     <div className="space-y-8">
@@ -57,10 +64,10 @@ const UniversityPage = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatPill icon={Layers} value={fields.length} label="رشته" color="bg-indigo-100 text-indigo-600" />
-        <StatPill icon={GraduationCap} value={teachers.length} label="استاد" color="bg-blue-100 text-blue-600" />
-        <StatPill icon={BookOpen} value={courses.length} label="درس" color="bg-emerald-100 text-emerald-600" />
-        <StatPill icon={FileText} value={materials.length} label="منبع" color="bg-amber-100 text-amber-600" />
+        <StatPill icon={Layers} value={fields?.length ?? (fieldsLoading ? '—' : 0)} label="رشته" color="bg-indigo-100 text-indigo-600" />
+        <StatPill icon={GraduationCap} value={teachers?.length ?? (teachersLoading ? '—' : 0)} label="استاد" color="bg-blue-100 text-blue-600" />
+        <StatPill icon={BookOpen} value={courseCount} label="درس" color="bg-emerald-100 text-emerald-600" />
+        <StatPill icon={FileText} value={materialCount} label="منبع" color="bg-amber-100 text-amber-600" />
       </div>
 
       {/* Tabs */}
@@ -74,16 +81,24 @@ const UniversityPage = () => {
       </div>
 
       {tab === 'FIELDS' ? (
-        fields.length > 0 ? (
+        fieldsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fields.map(f => <FieldCard key={f.id} field={f} />)}
+            {[...Array(4)].map((_, i) => <FieldCard key={i} field={{ id: '', name: '' }} skeleton />)}
+          </div>
+        ) : fields && fields.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {fields.map(f => <FieldCard key={f.id} field={f} teacherCount={0} courseCount={0} materialCount={0} />)}
           </div>
         ) : (
           <EmptyState icon={Layers} title="رشته‌ای برای این دانشگاه ثبت نشده است" />
         )
-      ) : teachers.length > 0 ? (
+      ) : teachersLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {teachers.map(t => <TeacherCard key={t.id} teacher={t} />)}
+          {[...Array(3)].map((_, i) => <TeacherCard key={i} teacher={{ id: '', name: '', fieldIds: [], avatarUrl: '', isVerified: false }} skeleton />)}
+        </div>
+      ) : teachers && teachers.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {teachers.map(t => <TeacherCard key={t.id} teacher={t} universityName={university.name} courseCount={0} materialCount={0} />)}
         </div>
       ) : (
         <EmptyState icon={GraduationCap} title="استادی برای این دانشگاه ثبت نشده است" />

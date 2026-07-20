@@ -1,25 +1,35 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import {
-  getFieldById,
-  getTeachersByField,
-  getCoursesByField,
-  getMaterialsByField,
-  UNIVERSITIES,
-} from '../constants';
+import { useField, useFieldTeachers, useFieldCourses } from '../src/api/hooks/directory';
+import { useUniversities } from '../src/api/hooks/directory';
+import { useMaterialsList } from '../src/api/hooks/materials';
 import { GraduationCap, BookOpen, FileText, Layers, Building2 } from 'lucide-react';
 import EntityBreadcrumb from '../components/EntityBreadcrumb';
 import StatPill from '../components/StatPill';
 import TeacherCard from '../components/TeacherCard';
 import CourseCard from '../components/CourseCard';
 import EmptyState from '../components/EmptyState';
+import { NoteStatus } from '../types';
 
 const FieldPage = () => {
   const { id } = useParams<{ id: string }>();
-  const field = getFieldById(id);
   const [uniFilter, setUniFilter] = useState<string>('');
 
-  if (!field) {
+  const { data: field, isLoading: fieldLoading, isError: fieldError } = useField(id || '');
+  const { data: allTeachers, isLoading: teachersLoading } = useFieldTeachers(id || '');
+  const { data: allCourses } = useFieldCourses(id || '');
+  const { data: materials, isLoading: materialsLoading } = useMaterialsList({ field: id, status: NoteStatus.PUBLISHED });
+  const { data: universities } = useUniversities();
+
+  if (fieldLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (fieldError || !field) {
     return (
       <div className="text-center py-20">
         <h2 className="text-2xl font-bold text-slate-800">رشته مورد نظر یافت نشد</h2>
@@ -28,18 +38,16 @@ const FieldPage = () => {
     );
   }
 
-  const allTeachers = getTeachersByField(field.id);
-  const allCourses = getCoursesByField(field.id);
-  const materials = getMaterialsByField(field.id);
-
-  const teachers = uniFilter ? allTeachers.filter(t => t.universityId === uniFilter) : allTeachers;
-  const courses = uniFilter ? allCourses.filter(c => c.universityId === uniFilter) : allCourses;
+  const teachers = uniFilter ? allTeachers?.filter(t => t.universityId === uniFilter) : allTeachers;
+  const courses = uniFilter ? allCourses?.filter(c => c.universityId === uniFilter) : allCourses;
 
   // Universities that actually have content in this field
   const relevantUniIds = new Set<string>();
-  allTeachers.forEach(t => t.universityId && relevantUniIds.add(t.universityId));
-  allCourses.forEach(c => c.universityId && relevantUniIds.add(c.universityId));
-  const relevantUnis = UNIVERSITIES.filter(u => relevantUniIds.has(u.id));
+  allTeachers?.forEach(t => t.universityId && relevantUniIds.add(t.universityId));
+  allCourses?.forEach(c => c.universityId && relevantUniIds.add(c.universityId));
+  const relevantUnis = universities?.filter(u => relevantUniIds.has(u.id)) || [];
+
+  const publishedMaterialsCount = materials?.filter(m => m.status === NoteStatus.PUBLISHED).length ?? 0;
 
   return (
     <div className="space-y-8">
@@ -58,9 +66,9 @@ const FieldPage = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <StatPill icon={GraduationCap} value={allTeachers.length} label="استاد" color="bg-blue-100 text-blue-600" />
-        <StatPill icon={BookOpen} value={allCourses.length} label="درس" color="bg-emerald-100 text-emerald-600" />
-        <StatPill icon={FileText} value={materials.length} label="منبع" color="bg-amber-100 text-amber-600" />
+        <StatPill icon={GraduationCap} value={allTeachers?.length ?? (teachersLoading ? '—' : 0)} label="استاد" color="bg-blue-100 text-blue-600" />
+        <StatPill icon={BookOpen} value={allCourses?.length ?? 0} label="درس" color="bg-emerald-100 text-emerald-600" />
+        <StatPill icon={FileText} value={publishedMaterialsCount} label="منبع" color="bg-amber-100 text-amber-600" />
       </div>
 
       {/* University filter */}
@@ -90,7 +98,11 @@ const FieldPage = () => {
           <GraduationCap className="text-blue-600" size={22} />
           اساتید این رشته
         </h2>
-        {teachers.length > 0 ? (
+        {teachersLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <TeacherCard key={i} teacher={{ id: '', name: '', fieldIds: [], avatarUrl: '', isVerified: false }} skeleton />)}
+          </div>
+        ) : teachers && teachers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {teachers.map(t => <TeacherCard key={t.id} teacher={t} />)}
           </div>
@@ -105,7 +117,7 @@ const FieldPage = () => {
           <BookOpen className="text-blue-600" size={22} />
           درس‌های این رشته
         </h2>
-        {courses.length > 0 ? (
+        {courses && courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map(c => <CourseCard key={c.id} course={c} />)}
           </div>

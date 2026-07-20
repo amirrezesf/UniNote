@@ -1,0 +1,23 @@
+@font-face {
+  font-family: 'Yekan Bk';
+  font-style: normal;
+  font-weight: 400;
+  src: url('regular.ttf') format('truetype'),
+       url('Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Yekan Bk';
+  font-style: normal;
+  font-weight: 700;
+  src: url('bold-2.ttf') format('truetype'),
+       url('Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Yekan Bk';
+  font-style: normal;
+  font-weight: 100;
+  src: url('thin-2.ttf') format('truetype'),
+       url('Thin.woff2') format('woff2');
+}
