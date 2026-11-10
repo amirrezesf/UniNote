@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://divslayer.github.io/UniNote/",
+  "homepage": "https://amirrezesf.github.io/UniNote/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
